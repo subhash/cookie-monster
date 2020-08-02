@@ -4,36 +4,58 @@ addEventListener('fetch', event => {
 
 const createCookie = `
   const url = "https://cookie-monster.subhash.workers.dev/"
-  console.log('Sending req ')
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json'},
     body: JSON.stringify({ name, quote }),
-    referrerPolicy: 'origin'
-  }).then(res => console.log('res ', res))
+    credentials: 'include'
+  }).then(res => console.log('Visitior IP ', res))
   .catch(err => console.log('err ', err))
-  console.log('Sent req ')
 `
 
+const logCookie = (cookieStr) => `
+  console.log("cookie - ${cookieStr}")
+`
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'null',
+  'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Set-Cookie',
+  'Access-Control-Allow-Credentials': 'true'
+}
+
 function handleOptions() {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  }
   return new Response(null, {
     headers: corsHeaders
   })
 }
 
 async function handlePost(request) {
+  const clientIP = request.headers.get('CF-Connecting-IP')
   const body = await request.json()
-  const response = new Response('POST got '+JSON.stringify(body))
-  response.headers.set('Access-Control-Allow-Origin', '*')
+  const { name, quote } = body
+  const attrs = 
+    "Domain=cookie-monster.subhash.workers.dev; "+ 
+    "path=/; "+
+    `Max-Age=${Number.MAX_SAFE_INTEGER}; `+
+    "SameSite=None; Secure"
+  const cookieHeaders = {
+    'Set-Cookie': [
+      `name=foo`, 
+      `quote=doo`]
+  }
+  const response = new Response(`${attrs}`, { 
+    headers: corsHeaders
+  })
+  response.headers.append('Set-Cookie', `name=${name}; ${attrs}`)
+  response.headers.append('Set-Cookie', `quote=${quote}; ${attrs}`)
   return response
 }
 
-function handleGet() {
+function handleGet(request) {
+  const cookieString = request.headers.get('Cookie')
+  if (cookieString && cookieString.length) {
+    return new Response(logCookie(cookieString))
+  }
   return new Response(createCookie, {
     headers: { 'content-type': 'text/plain' },
   })
@@ -46,7 +68,7 @@ async function handleRequest(request) {
   if (request.method === 'POST') {
     return handlePost(request)
   }
-  return handleGet()
+  return handleGet(request)
 }
 
 function getCookie(request, name) {
