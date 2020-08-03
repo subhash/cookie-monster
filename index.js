@@ -9,23 +9,18 @@ const createCookie = `
     headers: { 'Content-Type': 'application/json'},
     body: JSON.stringify({ name, quote }),
     credentials: 'include'
-  }).then(res => console.log('Visitior IP ', res))
+  }).then(res => res.json().then(ip =>
+    console.log('Visitior IP ', ip)))
   .catch(err => console.log('err ', err))
 `
 
-const logCookie = (cookieStr) => {
-  const cookies = cookieStr.split(';').map(c => {
-    const [key, value] = c.split('=')
-    return { key: key.trim(), value }
-  })
-  return `
+const logCookie = (cookies) => `
     const cookies = ${JSON.stringify(cookies)}
     console.log("cookies - ", cookies)
     cookies.map(c => {
       document.cookie = "local_" + c.key + "=" + c.value + ";" 
     })
-  `
-}
+`
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'http://localhost:4000',
@@ -54,7 +49,7 @@ async function handlePost(request) {
       `name=foo`, 
       `quote=doo`]
   }
-  const response = new Response(`${attrs}`, { 
+  const response = new Response(JSON.stringify({clientIP}), { 
     headers: corsHeaders
   })
   response.headers.append('Set-Cookie', `name=${name}; ${attrs}`)
@@ -65,11 +60,16 @@ async function handlePost(request) {
 function handleGet(request) {
   const cookieString = request.headers.get('Cookie')
   if (cookieString && cookieString.length) {
-    return new Response(logCookie(cookieString))
+    const cookies = cookieString.split(';').map(c => {
+      const [key, value] = c.split('=')
+      return { key: key.trim(), value }
+    })
+    if (cookies.some(c => c.key=='name') && cookies.some(c => c.key == 'quote'))
+      return new Response(logCookie(cookies))
+    else
+      return new Response(createCookie); 
   }
-  return new Response(createCookie, {
-    headers: { 'content-type': 'text/plain' },
-  })
+  return new Response(createCookie)
 }
 
 async function handleRequest(request) {
@@ -80,20 +80,4 @@ async function handleRequest(request) {
     return handlePost(request)
   }
   return handleGet(request)
-}
-
-function getCookie(request, name) {
-  let result = ''
-  const cookieString = request.headers.get('Cookie')
-  if (cookieString) {
-    const cookies = cookieString.split(';')
-    cookies.forEach(cookie => {
-      const cookieName = cookie.split('=')[0].trim()
-      if (cookieName === name) {
-        const cookieVal = cookie.split('=')[1]
-        result = cookieVal
-      }
-    })
-  }
-  return result
 }
