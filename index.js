@@ -13,11 +13,22 @@ const createCookie = `
   .catch(err => console.log('err ', err))
 `
 
-const logCookie = (cookieStr) => `
-  console.log("cookie - ${cookieStr}")
-`
+const logCookie = (cookieStr) => {
+  const cookies = cookieStr.split(';').map(c => {
+    const [key, value] = c.split('=')
+    return { key: key.trim(), value }
+  })
+  return `
+    const cookies = ${JSON.stringify(cookies)}
+    console.log("cookies - ", cookies)
+    cookies.map(c => {
+      document.cookie = "local_" + c.key + "=" + c.value + ";" 
+    })
+  `
+}
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'null',
+  'Access-Control-Allow-Origin': 'http://localhost:4000',
   'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Set-Cookie',
   'Access-Control-Allow-Credentials': 'true'
